@@ -17,7 +17,13 @@ const (
 	TokenEOF    // eof
 )
 
+type Position struct {
+	Start int
+	End   int
+}
+
 type Token struct {
 	Cargo string
 	Typ   TokenType
+	Pos   *Position
 }

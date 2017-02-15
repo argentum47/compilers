@@ -84,7 +84,8 @@ func getTokenType(ch string) token.TokenType {
 func (s *Scanner) Scan() (tok token.Token) {
 	s.skipSpaces()
 
-	tok = token.Token{Cargo: string(s.ch), Typ: token.TokenEOF}
+	pos := &token.Position{Start: s.offset}
+	tok = token.Token{Cargo: string(s.ch), Typ: token.TokenEOF, Pos: pos}
 
 	switch ch := s.ch; {
 	case isAlnum(ch):
@@ -92,11 +93,14 @@ func (s *Scanner) Scan() (tok token.Token) {
 
 		tok.Typ = getTokenType(literal)
 		tok.Cargo = literal
+		tok.Pos.End = s.nextOffset
 	case isOperator(ch):
 		tok.Typ = token.TokenOperator
+		tok.Pos.End = s.nextOffset
 		s.next()
 	default:
 		s.next()
+		tok.Pos.End = s.nextOffset
 
 		switch ch {
 		case '|':
