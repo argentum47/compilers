@@ -230,15 +230,9 @@ Parser.prototype.parseExpr = function (prev) {
     }
 }
 
-// parse args
-// args := []
-// if next token value is undefined, throw error
-// while(this.token.next.value)
-// op, ch := getNext()
-// if op == ')': return
-// elif op == ',': getNext()
-// elif op == symbol: args.push({op, ch})
-// else throw Error invalid code
+Parser.prototype.validateFunctionParams = function(args) {
+
+}
 
 Parser.prototype.parseArgs = function(sep, end) {
     if(!this.tokens.next.value) throw Error("INVALID EXPRESSION");
@@ -271,7 +265,8 @@ Parser.prototype.parseArgs = function(sep, end) {
 //let expr = 'x = 2+3*5;'
 //let expr = 'y = (x) => { 2 + 3; };'
 //let expr = 'print("bla");'
-let expr = 'y = f(x);'
+//let expr = 'y = f(x);'
+let expr = 'y = (1, x) => { 2+3; };'
 let ch = new Char(expr);
 let lex = Lexer(ch);
 
