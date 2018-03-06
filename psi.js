@@ -45,7 +45,9 @@ const constants = {
     STRING:   "STRING",
     NUMBER:   "NUMBER",
     SYMBOL:   "SYMBOL",
-    SPACE:    "SPACE"
+    SPACE:    "SPACE",
+    FUNCTION: "FUNCTION",
+    FUNCTIONCALL: "FUNCTIONCALL"
 }
 
 const Tokens = {
@@ -188,7 +190,7 @@ Parser.prototype.parseExpr = function (prev) {
     }
     
     let { value: { op, ch } } = this.tokens.getNext()
-    //log(op, ch)
+    //log(ch)
 
     if([constants.NUMBER, constants.SYMBOL, constants.STRING].includes(op) && !prev) {
         return this.parseExpr({op, values: ch})
@@ -201,16 +203,20 @@ Parser.prototype.parseExpr = function (prev) {
 
     if(op == '(') {
         let nxt = this.parseArgs(',', ')')
+        let values = []
+
         if(this.tokens.next.value && this.tokens.next.value.ch == '=>') {
             this.tokens.getNext();
+
+            if(!this.tokens.next.value) throw Error("INVALID SYNTAX");
+            if(this.tokens.next.value.op == '{') {
+                this.tokens.getNext()
+                let args = this.parseArgs(';', '}')
+                return this.parseExpr({op: constants.FUNCTION, values: [nxt, args]})
+            }
+        } else if(this.tokens.next.value && this.tokens.next.value.op == ';') {
+            return this.parseExpr({ op: constants.FUNCTIONCALL, values: [prev, nxt] })
         }
-
-        return this.parseExpr({op: "function", values: [prev, nxt]})
-    }
-
-    if(op =='{') {
-        let nxt = this.parseArgs(';', '}')
-        return this.parseExpr({ op: "body", values: nxt })
     }
 
     if(op == '=') {
@@ -263,7 +269,9 @@ Parser.prototype.parseArgs = function(sep, end) {
 }
 
 //let expr = 'x = 2+3*5;'
-let expr = 'y = (x) => { 2 + 3; };'
+//let expr = 'y = (x) => { 2 + 3; };'
+//let expr = 'print("bla");'
+let expr = 'y = f(x);'
 let ch = new Char(expr);
 let lex = Lexer(ch);
 
