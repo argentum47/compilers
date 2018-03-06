@@ -123,7 +123,7 @@ function* Lexer(ch) {
             }
             else yield {op: cr, ch: '='}
         }
-        else if(['(', ')','{', '}', ';'].includes(cr)) { 
+        else if(['(', ')','{', '}', ';', ','].includes(cr)) { 
             yield {op: cr , ch: cr} 
         }
         else if(['\'', '"'].includes(cr)) {
@@ -138,6 +138,7 @@ function* Lexer(ch) {
             let sym = cr + parse_symbol(ch)
             yield { op: constants.SYMBOL, ch: sym }
         } else {
+            //console.log(cr)
             throw Error("INVALID CODE")
         }
     }
@@ -212,6 +213,7 @@ Parser.prototype.parseExpr = function (prev) {
             if(this.tokens.next.value.op == '{') {
                 this.tokens.getNext()
                 let args = this.parseArgs(';', '}')
+                if(!this.validateFunctionParams(nxt)) throw Error("FUNCTION PARAMS SYMBOL ONLY")
                 return this.parseExpr({op: constants.FUNCTION, values: [nxt, args]})
             }
         } else if(this.tokens.next.value && this.tokens.next.value.op == ';') {
@@ -231,7 +233,7 @@ Parser.prototype.parseExpr = function (prev) {
 }
 
 Parser.prototype.validateFunctionParams = function(args) {
-
+    return args.every(a => a.op == constants.SYMBOL)
 }
 
 Parser.prototype.parseArgs = function(sep, end) {
@@ -256,6 +258,7 @@ Parser.prototype.parseArgs = function(sep, end) {
 
         op = this.tokens.next.value.op
         this.tokens.getNext();
+
         if(!this.tokens.next.value) throw Error("INVALID CODE")
     }
 
