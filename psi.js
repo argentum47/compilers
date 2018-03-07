@@ -201,7 +201,7 @@ Parser.prototype.parseExpr = function (prev) {
     
     if(tok == constants.OPERATOR) {
         let nxt = this.parseExpr();
-        return this.parseExpr({ tok: constants.OPERATION, op: ch, values: prev ? [nxt].concat(prev) : [nxt] })
+        return this.parseExpr({ tok: constants.OPERATION, op: ch, values: prev ? [prev].concat(nxt) : [nxt] })
     }
 
     if(tok == '(') {
@@ -288,26 +288,77 @@ Env.prototype.get = function(name) {
 function evalExpression(expr, env) {
   switch(expr.tok) {
     case constants.ASSIGNMENT:
-        let variable = expr.values[0];
+        let variable = expr.values[0].values;
         let value = evalExpression(expr.values[1], env)
+
+        env.set(variable, value.values)
         break;
-    case constants.OPERATOR:
-      let left = evalExpression(values[0])
+    case constants.OPERATION:
+      let left = evalExpression(expr.values[0])
+      let right = evalExpression(expr.values[1])
+      
+      if(left.tok != right.tok) throw Error("TYPE MISMTACH")
+      
+      return _operation(left, right, expr.op) 
+
+    case constants.NUMBER:
+      return { tok: expr.tok, values: Number(expr.values) }
+
+    case constants.FUNCTIONCALL:
+      let fn = evalExpression(expr.values[0], env)
+      let args = expr.values[1].map(exp => evalExpression(exp, env))
+
+      if(fn.argslen != 0 && fn.argslen == args.length) throw Error("MISMATCH PARAMS LENGTH")
+      
+      if(fn.tok == "native") {
+        fn.func.apply(null, args)
+      }
+
       break;
+    case constants.SYMBOL:
+      let env_value = env.get(expr.values)
+      
+      if(env_value) {
+        return env_value
+      } else {
+        //console.log("what shit", expr.values)
+      }
+
+      throw Error("INVALID VARIABLE")
   }
 }
 
-let expr = 'x = 2+3*5;'
+function _functioncall(value) {
+  
+}
+
+function _operation(left, right, operator) {
+  if(left.tok == constants.NUMBER) {
+    if(operator == "+") return { tok: left.tok, values: left.values + right.values } 
+    if(operator == "*") return { tok: left.tok, values: left.values * right.values }
+  }
+  
+}
+
+function importEnv(env) {
+  //argslen 0 implies all
+  env.set("print", { tok: "native", func: console.log.bind(console), argslen: 0 });
+}
+
+let expr = 'x = 2+3*5; print(x);'
 //let expr = 'y = (x) => { 2 + x; }; y(2);'
 //let expr = 'print("bla");'
 //let expr = 'y = f(x);'
 //let expr = 'y = (1, x) => { 2+3; };'
 let ch = new Char(expr);
 let lex = Lexer(ch);
+let env = new Env()
+importEnv(env);
 
 let parser = new Parser(new Iterator(lex));
 while(parser.tokens.next.value) {
     let p = parser.parseExpr();
-    log(p)
+    //log(p)
+    evalExpression(p, env)
     parser.tokens.getNext()
 }
