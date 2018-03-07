@@ -291,7 +291,7 @@ function evalExpression(expr, env) {
         let variable = expr.values[0].values;
         let value = evalExpression(expr.values[1], env)
 
-        env.set(variable, value.values)
+        env.set(variable, value)
         break;
     case constants.OPERATION:
       let left = evalExpression(expr.values[0])
@@ -304,20 +304,27 @@ function evalExpression(expr, env) {
     case constants.NUMBER:
       return { tok: expr.tok, values: Number(expr.values) }
 
+    case constants.FUNCTION:
+      let fnargs = expr.values[0]
+      let body = expr.values[1]
+
+      return { tok: "function", func: body, args: fnargs, env: new Env(env)}
+      
     case constants.FUNCTIONCALL:
       let fn = evalExpression(expr.values[0], env)
       let args = expr.values[1].map(exp => evalExpression(exp, env))
-
-      if(fn.argslen != 0 && fn.argslen == args.length) throw Error("MISMATCH PARAMS LENGTH")
       
       if(fn.tok == "native") {
-        fn.func.apply(null, args)
+        if(fn.args.length != 0 && fn.args.length == args.length) throw Error("MISMATCH PARAMS LENGTH")
+        fn.func.apply(null, args.map(a => a.values))
+      } else if(fn.tok == "function") {
+        console.log(fn, args)    
       }
 
       break;
     case constants.SYMBOL:
       let env_value = env.get(expr.values)
-      
+
       if(env_value) {
         return env_value
       } else {
@@ -342,11 +349,11 @@ function _operation(left, right, operator) {
 
 function importEnv(env) {
   //argslen 0 implies all
-  env.set("print", { tok: "native", func: console.log.bind(console), argslen: 0 });
+  env.set("print", { tok: "native", func: console.log.bind(console), args: [] });
 }
 
-let expr = 'x = 2+3*5; print(x);'
-//let expr = 'y = (x) => { 2 + x; }; y(2);'
+//let expr = 'x = 2+3*5; print(x);'
+let expr = 'y = (x) => { 2 + x; }; y(2);'
 //let expr = 'print("bla");'
 //let expr = 'y = f(x);'
 //let expr = 'y = (1, x) => { 2+3; };'
