@@ -40,14 +40,16 @@ Char.prototype.getNext = function() {
 
 // lexer.js
 const constants = {
-    OPERATOR: "OPERATOR",
+    OPERATION: "OPERATION",
     SPECIAL:  "SPECIAL",
     STRING:   "STRING",
     NUMBER:   "NUMBER",
     SYMBOL:   "SYMBOL",
     SPACE:    "SPACE",
     FUNCTION: "FUNCTION",
-    FUNCTIONCALL: "FUNCTIONCALL"
+    FUNCTIONCALL: "FUNCTIONCALL",
+    ASSIGNMENT: "ASSIGNMENT",
+    OPERATOR: "OPERATOR"
 }
 
 const Tokens = {
@@ -111,32 +113,32 @@ function* Lexer(ch) {
         let cr = ch.char;
         
         if(["\n", " ", "\t"].includes(cr)) {
-            yield {op: constants.SPACE};
+            yield {tok: constants.SPACE};
         }
         else if(["+", "-", "*", "/"].includes(cr)) { 
-            yield {op: Tokens[cr], ch: cr} 
+            yield {tok: Tokens[cr], ch: cr} 
         }
         else if(cr == "=") {
             if(ch.next() == ">") {
                 ch = ch.getNext()
-                yield {op: Tokens['=>'], ch: '=>'}
+                yield {tok: Tokens['=>'], ch: '=>'}
             }
-            else yield {op: cr, ch: '='}
+            else yield {tok: cr, ch: '='}
         }
         else if(['(', ')','{', '}', ';', ','].includes(cr)) { 
-            yield {op: cr , ch: cr} 
+            yield {tok: cr , ch: cr} 
         }
         else if(['\'', '"'].includes(cr)) {
             let string = parse_quotes(ch, cr)
-            yield {op: constants.STRING, ch: string}
+            yield {tok: constants.STRING, ch: string}
         }
         else if(/\d/.test(cr)) {
             let num = cr + parse_number(ch)
-            yield {op: constants.NUMBER, ch: num}
+            yield {tok: constants.NUMBER, ch: num}
         }
         else if((/[a-z_]/i).test(cr)) {
             let sym = cr + parse_symbol(ch)
-            yield { op: constants.SYMBOL, ch: sym }
+            yield { tok: constants.SYMBOL, ch: sym }
         } else {
             //console.log(cr)
             throw Error("INVALID CODE")
@@ -171,38 +173,38 @@ Iterator.prototype.getNext = function() {
     let token = this.next;
     this.next = this._ch.next()
 
-    while(this.next.value && this.next.value.op == constants.SPACE) {
+    while(this.next.value && this.next.value.tok == constants.SPACE) {
         this.next = this._ch.next()
     }
 
     return token;
 }
 
-function Parser(tokens, stops = [";"]) {
+function Parser(tokens, sttoks = [";"]) {
     this.tokens = tokens;
-    this.stops = stops
+    this.sttoks = sttoks
 }
 
 Parser.prototype.parseExpr = function (prev) {
     if(this.tokens.next.done) throw Error("INVALID EXPRESSION")
     
-    if(this.stops.includes(this.tokens.next.value.ch)) {
+    if(this.sttoks.includes(this.tokens.next.value.ch)) {
         return prev
     }
     
-    let { value: { op, ch } } = this.tokens.getNext()
+    let { value: { tok, ch } } = this.tokens.getNext()
     //log(ch)
 
-    if([constants.NUMBER, constants.SYMBOL, constants.STRING].includes(op) && !prev) {
-        return this.parseExpr({op, values: ch})
+    if([constants.NUMBER, constants.SYMBOL, constants.STRING].includes(tok) && !prev) {
+        return this.parseExpr({tok, values: ch})
     }
     
-    if(op == constants.OPERATOR) {
+    if(tok == constants.OPERATOR) {
         let nxt = this.parseExpr();
-        return this.parseExpr({ op: op, values: prev ? [nxt].concat(prev) : [nxt] })
+        return this.parseExpr({ tok: constants.OPERATION, op: ch, values: prev ? [nxt].concat(prev) : [nxt] })
     }
 
-    if(op == '(') {
+    if(tok == '(') {
         let nxt = this.parseArgs(',', ')')
         let values = []
 
@@ -210,21 +212,21 @@ Parser.prototype.parseExpr = function (prev) {
             this.tokens.getNext();
 
             if(!this.tokens.next.value) throw Error("INVALID SYNTAX");
-            if(this.tokens.next.value.op == '{') {
+            if(this.tokens.next.value.tok == '{') {
                 this.tokens.getNext()
                 let args = this.parseArgs(';', '}')
                 if(!this.validateFunctionParams(nxt)) throw Error("FUNCTION PARAMS SYMBOL ONLY")
-                return this.parseExpr({op: constants.FUNCTION, values: [nxt, args]})
+                return this.parseExpr({tok: constants.FUNCTION, values: [nxt, args]})
             }
-        } else if(this.tokens.next.value && this.tokens.next.value.op == ';') {
-            return this.parseExpr({ op: constants.FUNCTIONCALL, values: [prev, nxt] })
+        } else if(this.tokens.next.value && this.tokens.next.value.tok == ';') {
+            return this.parseExpr({ tok: constants.FUNCTIONCALL, values: [prev, nxt] })
         }
     }
 
-    if(op == '=') {
-        if(prev.op != constants.SYMBOL) throw Error("INVALID ASSIGNMENT EXPR");
+    if(tok == '=') {
+        if(prev.tok != constants.SYMBOL) throw Error("INVALID ASSIGNMENT EXPR");
         let nxt = this.parseExpr();
-        return this.parseExpr({ op: op, values: [prev, nxt]})
+        return this.parseExpr({ tok: constants.ASSIGNMENT, values: [prev, nxt]})
     }
     
     else {
@@ -233,7 +235,7 @@ Parser.prototype.parseExpr = function (prev) {
 }
 
 Parser.prototype.validateFunctionParams = function(args) {
-    return args.every(a => a.op == constants.SYMBOL)
+    return args.every(a => a.tok == constants.SYMBOL)
 }
 
 Parser.prototype.parseArgs = function(sep, end) {
@@ -241,22 +243,22 @@ Parser.prototype.parseArgs = function(sep, end) {
     
     let args = [];
     
-    if(this.tokens.next.value.op == end) {
+    if(this.tokens.next.value.tok == end) {
         this.tokens.getNext()
         return args;
     }
 
     let parser = new Parser(this.tokens, [sep, end])
-    let op = this.tokens.next.value.op
+    let tok = this.tokens.next.value.tok
 
-    while(op != end) {
+    while(tok != end) {
         let p = parser.parseExpr()
 
         if (p) {
             args.push(p)
         }
 
-        op = this.tokens.next.value.op
+        tok = this.tokens.next.value.tok
         this.tokens.getNext();
 
         if(!this.tokens.next.value) throw Error("INVALID CODE")
@@ -265,11 +267,41 @@ Parser.prototype.parseArgs = function(sep, end) {
     return args
 }
 
-//let expr = 'x = 2+3*5;'
-//let expr = 'y = (x) => { 2 + 3; };'
+function Env(parent) {
+  this.parent = parent
+  this.values = {}
+}
+
+Env.prototype.set = function(name, value) {
+  this.values[name] = value
+  return this;
+}
+
+Env.prototype.get = function(name) {
+  if(this.values[name]) return this.values[name]
+  else {
+    if(!this.parent) return false;
+    else this.parent.get(name)
+  }
+}
+
+function evalExpression(expr, env) {
+  switch(expr.tok) {
+    case constants.ASSIGNMENT:
+        let variable = expr.values[0];
+        let value = evalExpression(expr.values[1], env)
+        break;
+    case constants.OPERATOR:
+      let left = evalExpression(values[0])
+      break;
+  }
+}
+
+let expr = 'x = 2+3*5;'
+//let expr = 'y = (x) => { 2 + x; }; y(2);'
 //let expr = 'print("bla");'
 //let expr = 'y = f(x);'
-let expr = 'y = (1, x) => { 2+3; };'
+//let expr = 'y = (1, x) => { 2+3; };'
 let ch = new Char(expr);
 let lex = Lexer(ch);
 
