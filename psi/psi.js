@@ -180,15 +180,15 @@ Iterator.prototype.getNext = function() {
     return token;
 }
 
-function Parser(tokens, sttoks = [";"]) {
+function Parser(tokens, stops = [";"]) {
     this.tokens = tokens;
-    this.sttoks = sttoks
+    this.stops = stops
 }
 
 Parser.prototype.parseExpr = function (prev) {
     if(this.tokens.next.done) throw Error("INVALID EXPRESSION")
     
-    if(this.sttoks.includes(this.tokens.next.value.ch)) {
+    if(this.stops.includes(this.tokens.next.value.ch)) {
         return prev
     }
     
@@ -218,7 +218,7 @@ Parser.prototype.parseExpr = function (prev) {
                 if(!this.validateFunctionParams(nxt)) throw Error("FUNCTION PARAMS SYMBOL ONLY")
                 return this.parseExpr({tok: constants.FUNCTION, values: [nxt, args]})
             }
-        } else if(this.tokens.next.value && this.tokens.next.value.tok == ';') {
+        } else if(this.tokens.next.value && this.stops.includes(this.tokens.next.value.tok)) {
             return this.parseExpr({ tok: constants.FUNCTIONCALL, values: [prev, nxt] })
         }
     }
@@ -298,7 +298,7 @@ function evalExpression(expr, env) {
       let right = evalExpression(expr.values[1], env)
 
       if(left.tok != right.tok) throw Error("TYPE MISMTACH")
-      
+
       return _operation(left, right, expr.op) 
 
     case constants.NUMBER:
@@ -319,7 +319,7 @@ function evalExpression(expr, env) {
       if(env_value) {
         return env_value
       } else {
-        //console.log("what shit", expr.values)
+        console.log("what shit", expr.values)
       }
 
       throw Error("INVALID VARIABLE")
@@ -339,15 +339,19 @@ function _functioncall(expr, env) {
     if(fn.args.length != 0 && fn.args.length != args.length) throw Error("MISMATCH PARAMS LENGTH")
 
     if(fn.tok == "native") {
-      return fn.func.apply(null, args.map(a => a.values))
+        //console.log(args);
+      return fn.func.apply(null, args.map(a => {
+          //console.log(a);
+          return a.values
+        }))
     } else if(fn.tok == "function") {
       makePairs(fn.args, args).forEach(([_var, _val]) => {
           env.set(_var.values, _val)
       })
 
-      //console.log(evalExpression(fn.func[0], env))
-      return evalExpression(fn.func[0], env)
-      //return { tok: "function", func: expr.values[0], args: expr.values[1] }    
+      return fn.func.reduce((acc, f) => {
+          return evalExpression(f, env)
+      }, "")
     }
 }
 
@@ -356,7 +360,6 @@ function _operation(left, right, operator) {
     if(operator == "+") return { tok: left.tok, values: left.values + right.values } 
     if(operator == "*") return { tok: left.tok, values: left.values * right.values }
   }
-  
 }
 
 function importEnv(env) {
@@ -365,10 +368,11 @@ function importEnv(env) {
 }
 
 //let expr = 'x = 2+3*5; print(x);'
-let expr = 'y = (x) => { 2 + x; }; z = y(3); print(z);'
+//let expr = 'y = (x) => { 2 + x; }; z = y(3); print(z);'
 //let expr = 'print("bla");'
 //let expr = 'y = f(x);'
 //let expr = 'y = (1, x) => { 2+3; };'
+let expr = 'y = (x) => { z = 5 * x; 2 + z; }; print(y(3));'
 let ch = new Char(expr);
 let lex = Lexer(ch);
 let env = new Env()
