@@ -21,8 +21,8 @@ function log(obj) {
 // producer.js
 
 function Char(string = "") {
-    this.string = string
-    this.strlen = string.length
+    this.string = string.trim()
+    this.strlen = this.string.length
     this.index = -1
     this.char = ""
 }
@@ -58,6 +58,7 @@ const Tokens = {
     '-':  constants.OPERATOR, 
     '/':  constants.OPERATOR,
     '*':  constants.OPERATOR,
+    ',':  constants.OPERATOR,
     '=>': constants.SPECIAL,
     '|>': constants.PIPE,
 }
@@ -154,8 +155,8 @@ function* Lexer(ch) {
 
 
 function Iterator(ch) {
-    this._ch     = ch;
-    this.next   = this._ch.next()
+    this._ch  = ch;
+    this.next = this._ch.next()
 }
 
 Iterator.prototype.getNext = function() {
@@ -214,7 +215,9 @@ Parser.prototype.parseExpr = function (prev) {
         let nxt = this.parseArgs(',', ')')
         let values = []
 
-        if(this.tokens.next.value && this.tokens.next.value.ch == '=>') {
+        if(!this.tokens.next.value) throw Error("FAILED TO PARSE BRACKETS")
+        
+        if(this.tokens.next.value.ch == '=>') {
             this.tokens.getNext();
 
             if(!this.tokens.next.value) throw Error("INVALID SYNTAX");
@@ -224,10 +227,9 @@ Parser.prototype.parseExpr = function (prev) {
                 if(!this.validateFunctionParams(nxt)) throw Error("FUNCTION PARAMS SYMBOL ONLY")
                 return this.parseExpr({tok: constants.FUNCTION, values: [nxt, args]})
             }
-        } else if(this.tokens.next.value && this.stops.includes(this.tokens.next.value.tok)) {
+        } else if(this.stops.includes(this.tokens.next.value.tok)) {
             return this.parseExpr({ tok: constants.FUNCTIONCALL, values: [prev, nxt] })
         }
-        throw Error("INVALID CODE");
     }
 
     if(tok == constants.PIPE) {
@@ -246,7 +248,7 @@ Parser.prototype.parseExpr = function (prev) {
     }
     
     else {
-        throw Error("FAILED PARSING")
+       throw Error("FAILED PARSING")
     }
 }
 
@@ -383,6 +385,8 @@ function _operation(left, right, operator) {
       return { tok: left.tok, values: left.values * right.values }
     case '/':
       return { tok: left.tok, values: left.values / right.values }
+    case ',':
+      return { tok: left.tok, values: right.values }
     }
   }
 }
@@ -396,10 +400,11 @@ function importEnv(env) {
 //let expr = 'y = (x) => { 2 + x; }; z = y(3); print(z);'
 //let expr = 'print("bla");'
 //let expr = 'y = f(x);'
-let expr = 'y = (x) => { 2*x; };  5 |> y |> print;'
+//let expr = 'y = (x) => { 2*x; };  5 |> y |> print;'
 //let expr = 'y = (x) => { 2*x; };  print(y(5));'
 //let expr = 'y = (x) => { z = 5 * x; 2 + z; }; print(y(3));'
-//let expr = '1+3 |> print;'
+let expr = '(1 + 3) |> print;'
+//let expr = 'y = (x) => { x + 2; }; (1 + 3) |> y |> print;'
 let ch = new Char(expr);
 let lex = Lexer(ch);
 let env = new Env()
