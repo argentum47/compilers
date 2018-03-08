@@ -49,7 +49,8 @@ const constants = {
     FUNCTION: "FUNCTION",
     FUNCTIONCALL: "FUNCTIONCALL",
     ASSIGNMENT: "ASSIGNMENT",
-    OPERATOR: "OPERATOR"
+    OPERATOR: "OPERATOR",
+    PIPE: "PIPE"
 }
 
 const Tokens = {
@@ -58,6 +59,7 @@ const Tokens = {
     '/':  constants.OPERATOR,
     '*':  constants.OPERATOR,
     '=>': constants.SPECIAL,
+    '|>': constants.PIPE,
 }
 
 function parse_quotes(ch, delim) {
@@ -65,10 +67,10 @@ function parse_quotes(ch, delim) {
     
     while(ch.next() != delim) {
         ch = ch.getNext();
-        
         if(ch.index == ch.strlen) {
             throw Error("INVALID CODE")
         }
+
         ret += ch.char;
     }
     
@@ -81,7 +83,6 @@ function parse_number(ch) {
     
     while(ch.next() && /\d/.test(ch.next())) {
         ch= ch.getNext()
-        
         if(ch.index == ch.strlen) {
             throw Error("INVALID CODE")
         }
@@ -97,10 +98,10 @@ function parse_symbol(ch) {
     
     while(ch.next() && /\w/.test(ch.next())) {
         ch = ch.getNext();
-        
         if(ch.index == ch.strlen) {
             throw Error("INVALID CODE")
         }
+
         sym += ch.char;        
     }
     
@@ -139,7 +140,12 @@ function* Lexer(ch) {
         else if((/[a-z_]/i).test(cr)) {
             let sym = cr + parse_symbol(ch)
             yield { tok: constants.SYMBOL, ch: sym }
-        } else {
+        }
+        else if(cr == '|' && ch.next() == '>') {
+          ch = ch.getNext();
+          yield { tok: Tokens['|>'], ch: '|>' }
+        }
+        else {
             //console.log(cr)
             throw Error("INVALID CODE")
         }
@@ -221,6 +227,16 @@ Parser.prototype.parseExpr = function (prev) {
         } else if(this.tokens.next.value && this.stops.includes(this.tokens.next.value.tok)) {
             return this.parseExpr({ tok: constants.FUNCTIONCALL, values: [prev, nxt] })
         }
+        throw Error("INVALID CODE");
+    }
+
+    if(tok == constants.PIPE) {
+      if(!this.tokens.next.value) throw Error("INVALID SYNTAX");
+      if(this.tokens.next.value.tok != constants.SYMBOL) throw Error("PIPE ONLY TO FUNCTION")
+
+      let params = [prev];
+      let fn = this.parseExpr();
+      return this.parseExpr({ tok: constants.FUNCTIONCALL, values: [fn, params] })
     }
 
     if(tok == '=') {
@@ -304,6 +320,9 @@ function evalExpression(expr, env) {
     case constants.NUMBER:
       return { tok: expr.tok, values: Number(expr.values) }
 
+    case constants.STRING:
+      return { tok: expr.tok, values: expr.values }
+
     case constants.FUNCTION:
       let fnargs = expr.values[0]
       let body = expr.values[1]
@@ -339,9 +358,7 @@ function _functioncall(expr, env) {
     if(fn.args.length != 0 && fn.args.length != args.length) throw Error("MISMATCH PARAMS LENGTH")
 
     if(fn.tok == "native") {
-        //console.log(args);
       return fn.func.apply(null, args.map(a => {
-          //console.log(a);
           return a.values
         }))
     } else if(fn.tok == "function") {
@@ -380,7 +397,8 @@ function importEnv(env) {
 //let expr = 'print("bla");'
 //let expr = 'y = f(x);'
 //let expr = 'y = (1, x) => { 2+3; };'
-let expr = 'y = (x) => { z = 5 * x; 2 + z; }; print(y(3));'
+//let expr = 'y = (x) => { z = 5 * x; 2 + z; }; print(y(3));'
+let expr = '1 |> print;'
 let ch = new Char(expr);
 let lex = Lexer(ch);
 let env = new Env()
