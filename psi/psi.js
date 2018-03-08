@@ -357,8 +357,16 @@ function _functioncall(expr, env) {
 
 function _operation(left, right, operator) {
   if(left.tok == constants.NUMBER) {
-    if(operator == "+") return { tok: left.tok, values: left.values + right.values } 
-    if(operator == "*") return { tok: left.tok, values: left.values * right.values }
+    switch(operator) {
+    case '+':
+        return { tok: left.tok, values: left.values + right.values }
+    case '-':
+      return { tok: left.tok, values: left.values + right.values }
+    case '*':
+      return { tok: left.tok, values: left.values * right.values }
+    case '/':
+      return { tok: left.tok, values: left.values / right.values }
+    }
   }
 }
 
