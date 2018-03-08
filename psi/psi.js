@@ -294,9 +294,9 @@ function evalExpression(expr, env) {
         env.set(variable, value)
         break;
     case constants.OPERATION:
-      let left = evalExpression(expr.values[0])
-      let right = evalExpression(expr.values[1])
-      
+      let left = evalExpression(expr.values[0], env)
+      let right = evalExpression(expr.values[1], env)
+
       if(left.tok != right.tok) throw Error("TYPE MISMTACH")
       
       return _operation(left, right, expr.op) 
@@ -311,17 +311,8 @@ function evalExpression(expr, env) {
       return { tok: "function", func: body, args: fnargs, env: new Env(env)}
       
     case constants.FUNCTIONCALL:
-      let fn = evalExpression(expr.values[0], env)
-      let args = expr.values[1].map(exp => evalExpression(exp, env))
-      
-      if(fn.tok == "native") {
-        if(fn.args.length != 0 && fn.args.length == args.length) throw Error("MISMATCH PARAMS LENGTH")
-        fn.func.apply(null, args.map(a => a.values))
-      } else if(fn.tok == "function") {
-        console.log(fn, args)    
-      }
+      return _functioncall(expr, env)
 
-      break;
     case constants.SYMBOL:
       let env_value = env.get(expr.values)
 
@@ -335,8 +326,29 @@ function evalExpression(expr, env) {
   }
 }
 
-function _functioncall(value) {
-  
+function makePairs(srcArr, dstArr) {
+    return srcArr.map((el, i) => {
+        return [el, dstArr[i]]
+    })
+}
+
+function _functioncall(expr, env) {
+    let fn = evalExpression(expr.values[0], env)
+    let args = expr.values[1].map(exp => evalExpression(exp, env))
+    
+    if(fn.args.length != 0 && fn.args.length != args.length) throw Error("MISMATCH PARAMS LENGTH")
+
+    if(fn.tok == "native") {
+      return fn.func.apply(null, args.map(a => a.values))
+    } else if(fn.tok == "function") {
+      makePairs(fn.args, args).forEach(([_var, _val]) => {
+          env.set(_var.values, _val)
+      })
+
+      //console.log(evalExpression(fn.func[0], env))
+      return evalExpression(fn.func[0], env)
+      //return { tok: "function", func: expr.values[0], args: expr.values[1] }    
+    }
 }
 
 function _operation(left, right, operator) {
@@ -353,7 +365,7 @@ function importEnv(env) {
 }
 
 //let expr = 'x = 2+3*5; print(x);'
-let expr = 'y = (x) => { 2 + x; }; y(2);'
+let expr = 'y = (x) => { 2 + x; }; z = y(3); print(z);'
 //let expr = 'print("bla");'
 //let expr = 'y = f(x);'
 //let expr = 'y = (1, x) => { 2+3; };'
