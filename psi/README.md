@@ -17,5 +17,6 @@ psi-lang
 
 #### Function declaration
 - `y = (x) => { x + 2; };`
-- `print(x);`
+- `print(y(x));`
+- `1|>print`
 
