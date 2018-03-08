@@ -4,7 +4,7 @@ psi-lang
 - A toy language
 - Everything ends in semicolon
 - Has strong types
-- Has function declaration
+- Has function definition
 - Has pipes
 - Expressions evaluated from right to left
 - No array, map, or decimals

@@ -235,8 +235,8 @@ Parser.prototype.parseExpr = function (prev) {
       if(this.tokens.next.value.tok != constants.SYMBOL) throw Error("PIPE ONLY TO FUNCTION")
 
       let params = [prev];
-      let fn = this.parseExpr();
-      return this.parseExpr({ tok: constants.FUNCTIONCALL, values: [fn, params] })
+      let {value:{tok, ch}} = this.tokens.getNext();
+      return this.parseExpr({ tok: constants.FUNCTIONCALL, values: [{tok, values: ch}, params] })
     }
 
     if(tok == '=') {
@@ -338,7 +338,7 @@ function evalExpression(expr, env) {
       if(env_value) {
         return env_value
       } else {
-        console.log("what shit", expr.values)
+        console.log("what shit", expr)
       }
 
       throw Error("INVALID VARIABLE")
@@ -392,13 +392,14 @@ function importEnv(env) {
   env.set("print", { tok: "native", func: console.log.bind(console), args: [] });
 }
 
-//let expr = 'x = 2+3*5; print(x);'
+//let expr = 'x = 2+3;'
 //let expr = 'y = (x) => { 2 + x; }; z = y(3); print(z);'
 //let expr = 'print("bla");'
 //let expr = 'y = f(x);'
-//let expr = 'y = (1, x) => { 2+3; };'
+let expr = 'y = (x) => { 2*x; };  5 |> y |> print;'
+//let expr = 'y = (x) => { 2*x; };  print(y(5));'
 //let expr = 'y = (x) => { z = 5 * x; 2 + z; }; print(y(3));'
-let expr = '1 |> print;'
+//let expr = '1+3 |> print;'
 let ch = new Char(expr);
 let lex = Lexer(ch);
 let env = new Env()
