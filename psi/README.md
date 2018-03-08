@@ -5,10 +5,10 @@ psi-lang
 - Everything ends in semicolon
 - Has strong types
 - Has function declaration
-- Has closures
+- Has pipes
 - Expressions evaluated from right to left
-- No array
-- No map
+- No array, map, or decimals
+
 
 
 #### Variable declaration
