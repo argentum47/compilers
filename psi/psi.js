@@ -227,10 +227,9 @@ Parser.prototype.parseExpr = function (prev) {
                 if(!this.validateFunctionParams(nxt)) throw Error("FUNCTION PARAMS SYMBOL ONLY")
                 return this.parseExpr({tok: constants.FUNCTION, values: [nxt, args]})
             }
-        } else  if(!prev) {
+        } else if(!prev) {
             return this.parseExpr(nxt[0])
         }
-
         else if(this.stops.includes(this.tokens.next.value.tok)) {
             return this.parseExpr({ tok: constants.FUNCTIONCALL, values: [prev, nxt] })
         }
