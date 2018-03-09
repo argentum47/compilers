@@ -11,7 +11,7 @@
 function display(lex) {
     for(let l of lex) {
         console.log(l)
-    }    
+    }
 }
 
 function log(obj) {
@@ -55,7 +55,7 @@ const constants = {
 
 const Tokens = {
     '+':  constants.OPERATOR,
-    '-':  constants.OPERATOR, 
+    '-':  constants.OPERATOR,
     '/':  constants.OPERATOR,
     '*':  constants.OPERATOR,
     ',':  constants.OPERATOR,
@@ -65,7 +65,7 @@ const Tokens = {
 
 function parse_quotes(ch, delim) {
     let ret = "";
-    
+
     while(ch.next() != delim) {
         ch = ch.getNext();
         if(ch.index == ch.strlen) {
@@ -74,38 +74,38 @@ function parse_quotes(ch, delim) {
 
         ret += ch.char;
     }
-    
+
     ch.getNext();
     return ret;
 }
 
 function parse_number(ch) {
     let num = "";
-    
+
     while(ch.next() && /\d/.test(ch.next())) {
         ch= ch.getNext()
         if(ch.index == ch.strlen) {
             throw Error("INVALID CODE")
         }
-        
+
         num += ch.char;
     }
-    
+
     return num;
 }
 
 function parse_symbol(ch) {
     let sym = ""
-    
+
     while(ch.next() && /\w/.test(ch.next())) {
         ch = ch.getNext();
         if(ch.index == ch.strlen) {
             throw Error("INVALID CODE")
         }
 
-        sym += ch.char;        
+        sym += ch.char;
     }
-    
+
     return sym;
 }
 
@@ -113,12 +113,12 @@ function* Lexer(ch) {
     while(ch.next()) {
         ch = ch.getNext()
         let cr = ch.char;
-        
+
         if(["\n", " ", "\t"].includes(cr)) {
             yield {tok: constants.SPACE};
         }
-        else if(["+", "-", "*", "/"].includes(cr)) { 
-            yield {tok: Tokens[cr], ch: cr} 
+        else if(["+", "-", "*", "/"].includes(cr)) {
+            yield {tok: Tokens[cr], ch: cr}
         }
         else if(cr == "=") {
             if(ch.next() == ">") {
@@ -127,8 +127,8 @@ function* Lexer(ch) {
             }
             else yield {tok: cr, ch: '='}
         }
-        else if(['(', ')','{', '}', ';', ','].includes(cr)) { 
-            yield {tok: cr , ch: cr} 
+        else if(['(', ')','{', '}', ';', ','].includes(cr)) {
+            yield {tok: cr , ch: cr}
         }
         else if(['\'', '"'].includes(cr)) {
             let string = parse_quotes(ch, cr)
@@ -165,16 +165,16 @@ Iterator.prototype.getNext = function() {
     //         let token = this._ch.next()
     //         this.tokens.push(token)
     //     }
-    
+
     //     return this.tokens[this.index + 1]
     //     return this.token
     // },
-    
+
     // getNext: function () {
     // if(!this.tokens[this.index + 1]) {
     //     this.next()
     // }
-    
+
     // this.token = this.tokens[++this.index]
     // return this
     let token = this.next;
@@ -194,18 +194,18 @@ function Parser(tokens, stops = [";"]) {
 
 Parser.prototype.parseExpr = function (prev) {
     if(this.tokens.next.done) throw Error("INVALID EXPRESSION")
-    
+
     if(this.stops.includes(this.tokens.next.value.ch)) {
         return prev
     }
-    
+
     let { value: { tok, ch } } = this.tokens.getNext()
     //log(ch)
 
     if([constants.NUMBER, constants.SYMBOL, constants.STRING].includes(tok) && !prev) {
         return this.parseExpr({tok, values: ch})
     }
-    
+
     if(tok == constants.OPERATOR) {
         let nxt = this.parseExpr();
         return this.parseExpr({ tok: constants.OPERATION, op: ch, values: prev ? [prev].concat(nxt) : [nxt] })
@@ -216,7 +216,7 @@ Parser.prototype.parseExpr = function (prev) {
         let values = []
 
         if(!this.tokens.next.value) throw Error("FAILED TO PARSE BRACKETS")
-        
+
         if(this.tokens.next.value.ch == '=>') {
             this.tokens.getNext();
 
@@ -227,7 +227,11 @@ Parser.prototype.parseExpr = function (prev) {
                 if(!this.validateFunctionParams(nxt)) throw Error("FUNCTION PARAMS SYMBOL ONLY")
                 return this.parseExpr({tok: constants.FUNCTION, values: [nxt, args]})
             }
-        } else if(this.stops.includes(this.tokens.next.value.tok)) {
+        } else  if(!prev) {
+            return this.parseExpr(nxt[0])
+        }
+
+        else if(this.stops.includes(this.tokens.next.value.tok)) {
             return this.parseExpr({ tok: constants.FUNCTIONCALL, values: [prev, nxt] })
         }
     }
@@ -246,8 +250,10 @@ Parser.prototype.parseExpr = function (prev) {
         let nxt = this.parseExpr();
         return this.parseExpr({ tok: constants.ASSIGNMENT, values: [prev, nxt]})
     }
-    
+
     else {
+        console.log(ch)
+        console.log(prev)
        throw Error("FAILED PARSING")
     }
 }
@@ -258,9 +264,9 @@ Parser.prototype.validateFunctionParams = function(args) {
 
 Parser.prototype.parseArgs = function(sep, end) {
     if(!this.tokens.next.value) throw Error("INVALID EXPRESSION");
-    
+
     let args = [];
-    
+
     if(this.tokens.next.value.tok == end) {
         this.tokens.getNext()
         return args;
@@ -299,7 +305,7 @@ Env.prototype.get = function(name) {
   if(this.values[name]) return this.values[name]
   else {
     if(!this.parent) return false;
-    else this.parent.get(name)
+    else return this.parent.get(name)
   }
 }
 
@@ -317,7 +323,7 @@ function evalExpression(expr, env) {
 
       if(left.tok != right.tok) throw Error("TYPE MISMTACH")
 
-      return _operation(left, right, expr.op) 
+      return _operation(left, right, expr.op)
 
     case constants.NUMBER:
       return { tok: expr.tok, values: Number(expr.values) }
@@ -330,7 +336,7 @@ function evalExpression(expr, env) {
       let body = expr.values[1]
 
       return { tok: "function", func: body, args: fnargs, env: new Env(env)}
-      
+
     case constants.FUNCTIONCALL:
       return _functioncall(expr, env)
 
@@ -356,7 +362,7 @@ function makePairs(srcArr, dstArr) {
 function _functioncall(expr, env) {
     let fn = evalExpression(expr.values[0], env)
     let args = expr.values[1].map(exp => evalExpression(exp, env))
-    
+
     if(fn.args.length != 0 && fn.args.length != args.length) throw Error("MISMATCH PARAMS LENGTH")
 
     if(fn.tok == "native") {
@@ -404,6 +410,8 @@ function importEnv(env) {
 //let expr = 'y = (x) => { 2*x; };  print(y(5));'
 //let expr = 'y = (x) => { z = 5 * x; 2 + z; }; print(y(3));'
 let expr = '(1 + 3) |> print;'
+//expr = 'print(1+3);'
+//let expr = 'z = (5 + (3 * 2));';
 //let expr = 'y = (x) => { x + 2; }; (1 + 3) |> y |> print;'
 let ch = new Char(expr);
 let lex = Lexer(ch);
