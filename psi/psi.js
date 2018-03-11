@@ -230,7 +230,7 @@ Parser.prototype.parseExpr = function (prev) {
         } else if(!prev) {
             return this.parseExpr(nxt[0])
         }
-        else if(this.stops.includes(this.tokens.next.value.tok)) {
+        else if(this.stops.includes(this.tokens.next.value.tok) || this.tokens.next.value.tok == constants.PIPE) {
             return this.parseExpr({ tok: constants.FUNCTIONCALL, values: [prev, nxt] })
         }
     }
@@ -251,8 +251,9 @@ Parser.prototype.parseExpr = function (prev) {
     }
 
     else {
-        console.log(ch)
-        console.log(prev)
+       console.log(ch)
+       console.log(prev)
+       console.log(this.tokens.next)
        throw Error("FAILED PARSING")
     }
 }
@@ -399,6 +400,10 @@ function _operation(left, right, operator) {
 function importEnv(env) {
   //argslen 0 implies all
   env.set("print", { tok: "native", func: console.log.bind(console), args: [] });
+  env.set("hash", { tok: "native", func: function(values) { console.log(values) }, args: [] });
+  env.set("vec", { tok: "native", func: function(values) { console.log(values) }, args: [] });
+  env.set("seq", { tok: "native", func: function(value) { let arr = []; for(let i = 0; i < value; i++) {arr.push(i)} return { values: arr }; }, args: []});
+  env.set("map", { tok: "native", func: function() { console.log(arguments)}, args: []})
 }
 
 //let expr = 'x = 2+3;'
@@ -409,6 +414,7 @@ function importEnv(env) {
 //let expr = 'y = (x) => { 2*x; };  print(y(5));'
 //let expr = 'y = (x) => { z = 5 * x; 2 + z; }; print(y(3));'
 let expr = '(1 + 3) |> print;'
+expr = 'seq(10); |> map();'
 //expr = 'print(1+3);'
 //let expr = 'z = (5 + (3 * 2));';
 //let expr = 'y = (x) => { x + 2; }; (1 + 3) |> y |> print;'
